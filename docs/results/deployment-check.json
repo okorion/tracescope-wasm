@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-12T04:23:39.810Z",
+  "url": "https://okorion.github.io/tracescope-wasm/",
+  "page_status": 200,
+  "wasm_assets": [
+    {
+      "url": "https://okorion.github.io/tracescope-wasm/assets/tracescope_engine_bg-BMidRpRd.wasm",
+      "status": 200,
+      "content_type": "application/wasm"
+    }
+  ],
+  "virtual_clock": "00:05.000",
+  "overview_trace_rows": 6,
+  "memory_panel_present": true,
+  "page_errors": [],
+  "source_commit": "30a5579c09007b329fc1cadf07e00b138f1df9c3",
+  "ci_run": "https://github.com/okorion/tracescope-wasm/actions/runs/38203317957",
+  "deployed_e2e": {
+    "passed": 9,
+    "failed": 0,
+    "duration_seconds": 25.8
+  }
+}

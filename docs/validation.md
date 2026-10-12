@@ -20,8 +20,8 @@
 | Rust 형식·정적 분석 | 통과 | `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` |
 | 실제 WASM | 6개 통과 | [wasm-runtime.test.mjs](../tests/wasm-runtime.test.mjs), Node의 실제 WebAssembly 런타임 |
 | TypeScript·Vite | 통과 | `npm run build`의 WASM 생성, `tsc --noEmit`, 프로덕션 정적 asset 생성 |
-| Chromium 제품 흐름 | 9개 통과 | [product.spec.ts](../tests/product.spec.ts). 최종 로컬 실행은 기존8개 일괄 통과 후 추가 Burst 검사1개 통과 |
-| npm 의존성 | 알려진 취약점0건 | `npm audit` 및 `npm audit --omit=dev`, 검사 당시 lockfile37패키지 |
+| Chromium 제품 흐름 | 9개 통과 | [product.spec.ts](../tests/product.spec.ts). 로컬8개+추가1개, CI9개 일괄, 실제 공개 Pages9개 일괄 통과 |
+| npm 의존성 | 알려진 취약점0건 | 현재 lockfile에 대한 `npm audit` 및 `npm audit --omit=dev` |
 
 Rust 테스트는 실제 수 분을 기다리지 않고 가상 시간으로 진행한다. 600초 정상 부하 검사는 매초 Trace 소속·부모 Handle·서비스 인덱스·만료 인덱스·슬롯 분할 정합성을 함께 확인한다. WASM 테스트도 600초 가상 실행 후 실제 인덱스 수와 live 슬롯 수, Ring Buffer 상한을 확인한다.
 
@@ -38,7 +38,7 @@ Rust 테스트는 실제 수 분을 기다리지 않고 가상 시간으로 진�
 
 ## 정상 부하와 Burst의 실제 WASM 메모리
 
-[원본 결과](results/wasm-benchmark.json), [실행 코드](../scripts/benchmark-wasm.mjs). 각 시나리오는 독립 Node 프로세스에서 release WASM을 실행했다. Retention60초, 상세 진단 켜짐, 100ms 가상 Step이다. CPU 시간은 WASM 호출과 JS 경계를 포함하며 실제 브라우저 프레임 측정과 구분한다.
+[원본 결과](results/wasm-benchmark.json), [실행 코드](../scripts/benchmark-wasm.mjs). 각 시나리오는 독립 Node 프로세스에서 release WASM을 실행했다. Retention60초, 상세 진단 켜짐, 100ms 가상 Step이다. 호출 경과 시간은 WASM 호출과 JS 경계를 포함하며 실제 브라우저 프레임 측정과 구분한다.
 
 | 조건 | Normal | Traffic Burst |
 | --- | ---: | ---: |
@@ -55,7 +55,7 @@ Rust 테스트는 실제 수 분을 기다리지 않고 가상 시간으로 진�
 | Tick P95 | 0.0283ms | 0.1423ms |
 | Trace Query P95 | 0.2936ms | 0.5650ms |
 
-Normal의 가상120~600초 표본에서 live Span은 6,006~6,021개, Arena6,025슬롯, Linear Memory3.25MiB로 유지됐다. 마지막 상태의 Trace 인덱스1,202개는 live Trace1,202개와 같고, 서비스 인덱스6,006개는 live Span6,006개와 같다. 만료 인덱스1,199개는 완료 후 보존 중인 Trace1,199개와 일치했다.
+Normal의 가상90~600초 표본에서 live Span은 6,006~6,021개, Arena6,025슬롯, Linear Memory3.25MiB로 유지됐다. 마지막 상태의 Trace 인덱스1,202개는 live Trace1,202개와 같고, 서비스 인덱스6,006개는 live Span6,006개와 같다. 만료 인덱스1,199개는 완료 후 보존 중인 Trace1,199개와 일치했다.
 
 Burst는 90초 시점에 live Span6,016개·Free9,009개로 돌아왔다. 이후에도 확보한15,025슬롯을 사용했고, 180초에는 재사용11,976회가 기록됐다. 높은 Linear Memory 값은 회수된 공간을 재사용하는 상태와 함께 관찰됐다. 이 측정에서 정상 부하의 지속적인 슬롯·Linear Memory 증가 추세는 나타나지 않았다. 일반 Allocator의 개별 live heap 바이트나 브라우저 전체 프로세스 메모리는 측정하지 않았다.
 
@@ -104,17 +104,24 @@ cargo run --release --manifest-path engine/Cargo.toml --example benchmark
 
 ## 배포 검증
 
-공개 저장소 [okorion/tracescope-wasm](https://github.com/okorion/tracescope-wasm)을 생성했다. GitHub Actions와 Pages 결과는 실제 원격 실행 후 이 절을 갱신한다. 배포 검증 대상은 [TraceScope](https://okorion.github.io/tracescope-wasm/)다.
+공개 저장소 [okorion/tracescope-wasm](https://github.com/okorion/tracescope-wasm)과 HTTPS 배포 사이트 [TraceScope](https://okorion.github.io/tracescope-wasm/)를 확인했다. 기존 `tracescope` 저장소가 있어 새 이름을 사용했다.
+
+- 제품 코드 커밋: `30a5579c09007b329fc1cadf07e00b138f1df9c3`.
+- [첫 GitHub Actions 실행](https://github.com/okorion/tracescope-wasm/actions/runs/38203317957): Rust fmt·clippy·43개 테스트, WASM·TypeScript 빌드, WASM6개 테스트, Chromium9개 E2E, Pages 배포 모두 성공. Linux runner, Node24, Rust1.99.0을 사용했다.
+- 실제 공개 URL을 `PLAYWRIGHT_BASE_URL`로 지정한 재검사: **9개 통과, 25.8초**. 시뮬레이션·검색·Waterfall·Pin·세 Developer Tools·슬롯 회수·다섯 시나리오·모바일 폭·실패 화면을 검사했다.
+- 2026-10-12 13:23(KST) 추가 확인: 페이지 HTTP200, 해시가 붙은 WASM asset HTTP200·`application/wasm`, 가상5초 요청 생성과 Memory 화면 확인, `pageerror`0건. [조회 원본](results/deployment-check.json).
+
+이후 문서 검증 기록만 갱신한 커밋도 같은 CI와 배포 절차를 따른다. 최신 배포 대상 커밋은 [Actions 실행 목록](https://github.com/okorion/tracescope-wasm/actions)을 통해 확인할 수 있다.
 
 ## 완료 기준과 범위
 
-| 요구사항 묶음 | 로컬 확인 |
+| 요구사항 묶음 | 확인 결과 |
 | --- | --- |
 | 정적 앱·외부 백엔드 없음·다섯 시나리오·실시간 요청·지연·오류·Waterfall·Pin | 완료 — 빌드, 엔진 및 브라우저 검사 |
 | Rust 소유권·직접 Arena·Generation·Retention·실제 Free List 재사용·stale 거부·Custom GC 제외 | 완료 — Rust43/WASM6 테스트와 소스 검사 |
 | 동일 엔진 진단·실제 Linear Memory·Live/Free·Lifecycle·Span→Arena·버퍼 상한 | 완료 — 단일 엔진 연결과 브라우저 검사 |
 | 정상 장기 재사용·인덱스 정리·Burst 복귀·Pin 해제 | 완료 — 가상600초/180초, 원본 수치와 정합성 테스트 |
 | 실제 화면·README·아키텍처 | 완료 — 실제 Chromium8종 캡처와 구현 기반 문서 |
-| 공개 GitHub·원격 CI·실제 Pages 실행 | 원격 검증 후 갱신 |
+| 공개 GitHub·원격 CI·실제 Pages 실행 | 완료 — 공개 저장소, CI 전체 성공, 배포 URL에서9개 E2E 통과 |
 
 Pin은 사용자 보존 정책이며 최대128개다. 새로고침/Reset은 데이터를 지운다. 시나리오는 고정 서비스 구조이며 임의 로그 수집, OpenTelemetry 가져오기, 저장·내보내기와 다중 사용자는 현재 지원하지 않는다.

@@ -163,7 +163,7 @@ Lifecycle은 2,048개 Ring Buffer, Rust와 JS의 시계열은 각각 최대 120�
 - 장시간 정상 부하의 live 객체·슬롯 상한·재사용 증가·진단 버퍼 크기.
 - 실제 컴파일한 WASM의 메모리 크기·확장 후 buffer 처리와 브라우저 사용자 흐름.
 
-최종 로컬 검사에서 Rust 테스트 **43개**, 컴파일한 WASM 테스트 **6개**가 통과했습니다. Playwright는 기본 흐름 8개를 한 번에 실행하고 추가한 Burst 회수 흐름 1개를 별도로 실행해 **9개**를 확인했습니다. TypeScript 검사·프로덕션 빌드·Rust fmt·clippy도 통과했습니다. CI에서는 브라우저 9개를 하나의 모음으로 실행합니다.
+Rust 테스트 **43개**, 컴파일한 WASM 테스트 **6개**, Playwright 제품 흐름 **9개**가 통과했습니다. TypeScript 검사·프로덕션 빌드·Rust fmt·clippy도 통과했습니다. GitHub Actions에서 전체 검사를 실행한 뒤 공개된 Pages 사이트에서도 브라우저 9개를 다시 실행해 모두 통과했습니다.
 
 2026-10-12 Windows 10 x64 · Ryzen 7 3700X · Node 25.9.0에서 release WASM을 실행한 결과입니다. Seed 42, Retention 60초, 상세 진단 켜짐, 100ms 가상 Step을 사용했습니다. Query는 25건 직렬화·JSON 파싱을 포함합니다.
 
@@ -239,7 +239,7 @@ npm run preview
 
 [GitHub Actions](.github/workflows/ci.yml)는 Rust fmt·clippy·test, WASM 빌드, TypeScript 검사, 컴파일한 WASM 테스트, Chromium E2E를 수행합니다. `main` 검증이 통과하면 `web/dist`를 GitHub Pages로 배포합니다. PR에서는 검사만 실행합니다.
 
-GitHub Pages의 저장소 경로는 `/tracescope-wasm/`입니다. Vite의 `base`와 WASM asset URL을 이 경로에 맞춥니다. 다른 정적 호스팅에는 `VITE_BASE_PATH`를 지정해 빌드할 수 있습니다. CI·배포의 실제 실행 결과는 [검증 기록](docs/validation.md)을 확인하세요.
+GitHub Pages의 저장소 경로는 `/tracescope-wasm/`입니다. Vite의 `base`와 WASM asset URL을 이 경로에 맞춥니다. 다른 정적 호스팅에는 `VITE_BASE_PATH`를 지정해 빌드할 수 있습니다. 2026-10-12 공개 사이트에서 WASM의 HTTP 200·`application/wasm` 응답, 시뮬레이션과 Diagnostics 동작을 확인했습니다. [첫 CI·배포 실행](https://github.com/okorion/tracescope-wasm/actions/runs/38203317957)과 [검증 기록](docs/validation.md)에 실제 결과를 남겼습니다.
 
 WASM은 Rust의 release 설정(`opt-level = 3`, LTO, codegen unit 1)으로 빌드합니다. 로컬 환경에서 선택적 후처리 도구인 `wasm-opt` 실행이 거부되어 해당 단계는 `engine/Cargo.toml`에서 비활성화했습니다. Rust 컴파일러 최적화는 유지되며, `wasm-opt` 적용 전후의 크기·성능 비교는 수행하지 않았습니다.
 
