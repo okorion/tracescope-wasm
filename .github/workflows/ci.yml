@@ -1,0 +1,72 @@
+name: Validate and deploy TraceScope
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracescope-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    timeout-minutes: 25
+    env:
+      VITE_BASE_PATH: /tracescope-wasm/
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned Rust toolchain
+        run: rustup show
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path engine/Cargo.toml --check
+      - name: Check Rust lints
+        run: cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings
+      - name: Test engine and memory lifecycle
+        run: cargo test --manifest-path engine/Cargo.toml --locked
+      - name: Install web and WASM build tools
+        run: npm ci
+      - name: Build WASM and TypeScript application
+        run: npm run build
+      - name: Test compiled WASM and real linear memory
+        run: npm run test:wasm
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test production application under Pages base path
+        run: npm run test:e2e
+      - name: Prepare GitHub Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v6.0.0
+      - name: Upload validated static site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: web/dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy validated site
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1
