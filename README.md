@@ -91,17 +91,18 @@ Retention을 5초로 설정한 상태입니다. Canvas는 최대 512슬롯씩 �
 
 ## Rust/WASM 아키텍처
 
-```mermaid
-flowchart LR
-  UI[React / TypeScript] -->|제어 · 조회| B[wasm-bindgen]
-  B --> E[Rust Engine]
-  E --> S[Trace Store]
-  S --> A[Generational Arena]
-  A --> M[WASM Linear Memory]
-  E --> D[Bounded Diagnostics]
-  D -->|Snapshot| UI
-  S -->|Query Snapshot| UI
-```
+그림의 아이콘은 실행 역할을, 경계는 브라우저와 Rust/WASM 영역을 나타냅니다. 움직이는 선은 데이터 방향을 보여주는 개념도입니다. [그림 원본·재생성 방법](docs/visuals/README.md)
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/architecture-mobile-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (max-width: 600px)" srcset="docs/visuals/architecture-mobile-light-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/visuals/architecture-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/visuals/architecture-light-still.svg" />
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/architecture-mobile-dark.svg" />
+  <source media="(max-width: 600px)" srcset="docs/visuals/architecture-mobile-light.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/visuals/architecture-dark.svg" />
+  <img alt="가상 이벤트에서 Trace와 메모리까지" src="docs/visuals/architecture-light.svg" width="100%" />
+</picture>
 
 Rust는 가상 시계, PRNG, 이벤트 큐, Trace·Span, 검색·만료 인덱스, Pin 상태, 메트릭과 Lifecycle 기록을 소유합니다. React는 UI 선택 상태와 제한된 스냅샷을 표시합니다. 전체 Trace·Span 원본을 React State에 복제하지 않습니다.
 
@@ -111,21 +112,33 @@ Rust는 가상 시계, PRNG, 이벤트 큐, Trace·Span, 검색·만료 인덱�
 
 ## Span이 생성되고 사라지는 과정
 
-```mermaid
-flowchart LR
-  A[Allocate] --> S[Active]
-  S --> R[Retained]
-  R -->|완료 후 Retention| E[Expire]
-  E --> D[Release]
-  D --> F[Free List]
-  F --> U[Reuse]
-```
+<picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/lifecycle-mobile-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (max-width: 600px)" srcset="docs/visuals/lifecycle-mobile-light-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/visuals/lifecycle-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/visuals/lifecycle-light-still.svg" />
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/lifecycle-mobile-dark.svg" />
+  <source media="(max-width: 600px)" srcset="docs/visuals/lifecycle-mobile-light.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/visuals/lifecycle-dark.svg" />
+  <img alt="Span의 생성부터 슬롯 재사용까지" src="docs/visuals/lifecycle-light.svg" width="100%" />
+</picture>
 
 Span 시작 이벤트가 `Arena<Span>`에 실제 값을 할당합니다. Trace는 소속 Span의 Handle 목록을 갖고, Span은 부모의 Handle을 가집니다. 종료 이벤트가 시각과 상태를 갱신하며 요청 완료 후에도 Retention 동안 값을 유지합니다. 진행 중인 요청은 보존 기간만으로 제거하지 않고, 모든 요청에 최대 8초 종료 경계를 둡니다.
 
 완료한 Trace가 만료되면 Trace 메타데이터, 서비스 검색 인덱스, 만료 인덱스와 소속 Span을 함께 제거합니다. Pin된 Trace는 이 정리에서 제외합니다. Unpin하면 완료 시각 기준의 만료 인덱스에 다시 들어가고 다음 Tick 또는 Step에서 회수됩니다.
 
 ### Generational Arena와 Handle
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/arena-mobile-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (max-width: 600px)" srcset="docs/visuals/arena-mobile-light-still.svg" />
+  <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/visuals/arena-dark-still.svg" />
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/visuals/arena-light-still.svg" />
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/visuals/arena-mobile-dark.svg" />
+  <source media="(max-width: 600px)" srcset="docs/visuals/arena-mobile-light.svg" />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/visuals/arena-dark.svg" />
+  <img alt="Span 슬롯의 해제·재사용과 세대 확인" src="docs/visuals/arena-light.svg" width="100%" />
+</picture>
 
 [`engine/src/arena.rs`](engine/src/arena.rs)의 핵심 구조는 다음과 같습니다.
 

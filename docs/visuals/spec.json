@@ -1,0 +1,94 @@
+{
+  "label": "TRACESCOPE / SYNTHETIC LIVE",
+  "diagrams": [
+    {
+      "id": "architecture",
+      "type": "trace",
+      "title": "가상 이벤트에서 Trace와 메모리까지",
+      "subtitle": [
+        "고정 Seed의 합성 트래픽을 엔진 하나에서 실행합니다."
+      ],
+      "description": "가상 이벤트에서 Trace와 메모리까지 · 고정 Seed의 합성 트래픽을 엔진 하나에서 실행합니다.",
+      "ui": "Live Overview · Explorer · Developer Tools",
+      "engine": "시뮬레이션 엔진",
+      "engineLines": [
+        "가상 시계 · PRNG · 이벤트 큐",
+        "Trace Store · 메트릭 · 진단"
+      ],
+      "policy": [
+        "Retention에 따른 해제",
+        "완료·만료한 Trace의 Span 제거",
+        "Pin된 Trace는 보존"
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "type": "steps",
+      "title": "Span의 생성부터 슬롯 재사용까지",
+      "subtitle": [
+        "같은 Span을 Waterfall과 Arena에서 따라갑니다."
+      ],
+      "description": "Span의 생성부터 슬롯 재사용까지 · 같은 Span을 Waterfall과 Arena에서 따라갑니다.",
+      "groups": [
+        {
+          "title": "01 생성과 실행",
+          "icon": "chip",
+          "lines": [
+            "시작 이벤트 → Arena에 Span 할당",
+            "Active → 종료 이벤트 → Retained"
+          ]
+        },
+        {
+          "title": "02 보존과 만료",
+          "icon": "file",
+          "lines": [
+            "완료 시각부터 Retention 동안 유지",
+            "진행 중·Pin된 요청은 만료 정리에서 보호"
+          ]
+        },
+        {
+          "title": "03 해제와 재사용",
+          "icon": "memory",
+          "lines": [
+            "만료 → 메타데이터·인덱스·Span 제거",
+            "값 Drop · 세대 증가 → Free List → 재사용"
+          ]
+        }
+      ],
+      "notes": [
+        "Unpin: 만료 인덱스 복귀 → 다음 Tick / Step에서 회수",
+        "가상 시간 기반의 명시적 해제이며 Mark-and-Sweep GC가 아닙니다."
+      ]
+    },
+    {
+      "id": "arena",
+      "type": "arena",
+      "title": "Span이 떠난 자리를 다시 사용",
+      "subtitle": [
+        "같은 슬롯을 사용해도 이전 Handle은 다시 유효해지지 않습니다."
+      ],
+      "description": "Span이 떠난 자리를 다시 사용 · 같은 슬롯을 사용해도 이전 Handle은 다시 유효해지지 않습니다.",
+      "states": [
+        [
+          "7:1",
+          "Span 보관",
+          "선택 Span의 Handle"
+        ],
+        [
+          "7:2",
+          "해제 · 빈칸",
+          "제거 시 세대 증가"
+        ],
+        [
+          "7:2",
+          "새 Span",
+          "Free List에서 재사용"
+        ]
+      ],
+      "notes": [
+        "이전 Handle 7:1 → 세대 불일치 → 거부",
+        "슬롯 번호·세대는 설명용 예시입니다."
+      ]
+    }
+  ]
+}
