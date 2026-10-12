@@ -1,0 +1,12 @@
+node_modules/
+engine/target/
+web/pkg/
+web/dist/
+test-results/
+playwright-report/
+output/
+.tools/
+*.log
+.env*
+!.env.example
+.DS_Store
